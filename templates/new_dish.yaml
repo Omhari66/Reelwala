@@ -1,0 +1,19 @@
+name: new_dish
+description: Announce a new item. Craving first, then name and price.
+target_duration_s: 14
+canvas: {width: 1080, height: 1920, fps: 30}
+shot_length_s: {min: 1.0, max: 2.0}
+segments_roles:
+  - {role: hook_shot, seconds: 2.0, pick: "most appetising moment (cheese pull, steam, sizzle)"}
+  - {role: reveal, seconds: 3.0, pick: "finished dish close-up"}
+  - {role: process, seconds: 5.0, pick: "cooking or plating shots", cuts: 3-4}
+  - {role: closing_shot, seconds: 4.0, pick: "hook moment again (loop) + CTA"}
+text:
+  hook:        {start: 0.2, end: 2.2, position: upper_third, font_size: 100, color: "#FFFFFF", stroke: "#000000", stroke_w: 6, max_words: 5}
+  dish_name:   {start: 2.2, end: 6.0, position: center_low, font_size: 90, color: "#FFFFFF", bg: "BRAND"}
+  lines:       {position: lower_third, font_size: 70, color: "#FFFFFF", stroke: "#000000", stroke_w: 5, per_line_s: 2.0}
+  price_tag:   {start: 6.0, end: 14.0, position: top_right, font_size: 84, color: "#000000", bg: "BRAND", shape: rounded_rect, only_if_price: true}
+  cta:         {start: 10.0, end: 14.0, position: lower_third, font_size: 78, color: "#000000", bg: "BRAND"}
+brand: {accent_bar: bottom, bar_height: 14, show_business_name: true, name_position: bottom_left, name_font_size: 44}
+transitions: {type: hard_cut}
+music: {file: auto, volume: 0.18, duck_under_speech: true, fade_out_s: 0.5}

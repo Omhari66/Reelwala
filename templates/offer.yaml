@@ -1,0 +1,18 @@
+name: offer
+description: Price or discount led ad. Best for combos, daily specials, limited-time deals.
+target_duration_s: 15
+canvas: {width: 1080, height: 1920, fps: 30}
+shot_length_s: {min: 1.0, max: 2.0}
+segments_roles:
+  - {role: hook_shot, seconds: 2.0, pick: "highest appeal food close-up"}
+  - {role: build, seconds: 8.0, pick: "varied food/process shots", cuts: 4-6}
+  - {role: people_shot, seconds: 2.0, pick: "person or customer if available else food"}
+  - {role: closing_shot, seconds: 3.0, pick: "same moment as hook_shot (loop)"}
+text:
+  hook:        {start: 0.2, end: 2.2, position: upper_third, font_size: 96, color: "#FFFFFF", stroke: "#000000", stroke_w: 6, max_words: 6}
+  offer_badge: {start: 2.0, end: 12.0, position: top_right, font_size: 84, color: "#000000", bg: "BRAND", shape: rounded_rect}
+  lines:       {position: lower_third, font_size: 72, color: "#FFFFFF", stroke: "#000000", stroke_w: 5, per_line_s: 2.0}
+  cta:         {start: 12.0, end: 15.0, position: lower_third, font_size: 80, color: "#000000", bg: "BRAND"}
+brand: {accent_bar: bottom, bar_height: 14, show_business_name: true, name_position: bottom_left, name_font_size: 44}
+transitions: {type: hard_cut, optional_flash_frames: 2}
+music: {file: auto, volume: 0.18, duck_under_speech: true, fade_out_s: 0.5}

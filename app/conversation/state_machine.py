@@ -1,0 +1,19 @@
+"""Conversation state machine definitions and transitions."""
+
+from enum import Enum
+
+
+class ConversationState(str, Enum):
+    """WhatsApp conversation states per CONVERSATION_FLOW.md."""
+
+    NEW_USER = "NEW_USER"
+    ONBOARDING_NAME = "ONBOARDING_NAME"
+    ONBOARDING_CATEGORY = "ONBOARDING_CATEGORY"
+    ONBOARDING_LANGUAGE = "ONBOARDING_LANGUAGE"
+    ONBOARDING_LANDMARK = "ONBOARDING_LANDMARK"
+    ONBOARDING_BRAND_COLOR = "ONBOARDING_BRAND_COLOR"
+    MENU_SETUP = "MENU_SETUP"
+    READY = "READY"
+    PROCESSING = "PROCESSING"
+    AWAITING_APPROVAL = "AWAITING_APPROVAL"
+    REVISION = "REVISION"

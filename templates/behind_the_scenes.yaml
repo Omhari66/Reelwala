@@ -1,0 +1,17 @@
+name: behind_the_scenes
+description: Authentic making-of. Trust and personality. Good for people shots.
+target_duration_s: 16
+canvas: {width: 1080, height: 1920, fps: 30}
+shot_length_s: {min: 1.2, max: 2.5}
+segments_roles:
+  - {role: hook_shot, seconds: 2.0, pick: "most interesting action moment"}
+  - {role: process, seconds: 8.0, pick: "preparation steps in order", cuts: 4-6}
+  - {role: person, seconds: 3.0, pick: "owner/staff face or smile if available"}
+  - {role: closing_shot, seconds: 3.0, pick: "finished dish, loops to hook"}
+text:
+  hook:        {start: 0.2, end: 2.2, position: upper_third, font_size: 92, color: "#FFFFFF", stroke: "#000000", stroke_w: 6, max_words: 6}
+  lines:       {position: lower_third, font_size: 70, color: "#FFFFFF", stroke: "#000000", stroke_w: 5, per_line_s: 2.2}
+  cta:         {start: 13.0, end: 16.0, position: lower_third, font_size: 78, color: "#000000", bg: "BRAND"}
+brand: {accent_bar: bottom, bar_height: 14, show_business_name: true, name_position: bottom_left, name_font_size: 44}
+transitions: {type: hard_cut}
+music: {file: auto, volume: 0.2, duck_under_speech: true, fade_out_s: 0.5}
