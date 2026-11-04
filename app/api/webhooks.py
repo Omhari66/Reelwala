@@ -127,9 +127,9 @@ async def twilio_webhook(
     conversation.last_message_at = utcnow()
     db.commit()
 
-    # Route text or audio messages to conversation handler
+    # Route text, image, video or audio messages to conversation handler
     reply_text = None
-    if msg_type == "text":
+    if msg_type in ("text", "image", "video", "media"):
         from app.conversation.handlers import handle_inbound_message
         from app.messaging import get_messaging_provider
 
@@ -141,6 +141,7 @@ async def twilio_webhook(
             text=params.get("Body"),
             media_url=media_url,
             provider=provider,
+            auto_process=True,
         )
     elif msg_type == "audio":
         import uuid

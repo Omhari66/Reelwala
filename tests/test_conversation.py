@@ -164,3 +164,91 @@ def test_global_commands_help_status_menu_restart_cancel() -> None:
     assert r_stat_ready == copy.STATUS_READY
 
     db.close()
+
+
+def test_onboarding_name_validation_catches_greetings_address_and_menu() -> None:
+    """Verify friendly error notices when owner mistypes shop name as greeting, address, or menu."""
+    db = SessionLocal()
+    provider = FakeMessagingProvider()
+    biz = Business(phone_e164="+919000000001", name="Temp")
+    db.add(biz)
+    db.flush()
+    conv = Conversation(business_id=biz.id, state=ConversationState.ONBOARDING_NAME)
+    db.add(conv)
+    db.commit()
+
+    # 1. Mistyping "Hi" as shop name
+    r_hi = handle_inbound_message(db, biz, conv, "Hi", None, provider)
+    assert conv.state == ConversationState.ONBOARDING_NAME
+    assert r_hi == copy.INVALID_SHOP_NAME_GREETING
+
+    # 2. Mistyping address as shop name
+    r_addr = handle_inbound_message(db, biz, conv, "Near metro station gate 2", None, provider)
+    assert conv.state == ConversationState.ONBOARDING_NAME
+    assert r_addr == copy.INVALID_SHOP_NAME_ADDRESS
+
+    # 3. Mistyping menu items with prices as shop name
+    r_menu = handle_inbound_message(db, biz, conv, "Chai 20, Samosa 15", None, provider)
+    assert conv.state == ConversationState.ONBOARDING_NAME
+    assert r_menu == copy.INVALID_SHOP_NAME_MENU
+
+    # 4. Valid shop name succeeds
+    r_valid = handle_inbound_message(db, biz, conv, "Vrindavan Chai", None, provider)
+    assert conv.state == ConversationState.ONBOARDING_CATEGORY
+    assert biz.name == "Vrindavan Chai"
+    assert r_valid == copy.ASK_CATEGORY
+    db.close()
+
+
+def test_onboarding_media_rejected_in_text_steps() -> None:
+    """Verify that sending a photo or video during text steps reminds owner to send text."""
+    db = SessionLocal()
+    provider = FakeMessagingProvider()
+    biz = Business(phone_e164="+919000000002", name="Temp")
+    db.add(biz)
+    db.flush()
+    conv = Conversation(business_id=biz.id, state=ConversationState.ONBOARDING_NAME)
+    db.add(conv)
+    db.commit()
+
+    # Photo sent when shop name expected
+    r = handle_inbound_message(db, biz, conv, None, "https://api.twilio.com/Media/photo1", provider)
+    assert conv.state == ConversationState.ONBOARDING_NAME
+    assert "photo/video" in r
+    assert "naam" in r
+    db.close()
+
+
+def test_onboarding_category_and_language_validation() -> None:
+    """Verify category and language numbered/named options are validated."""
+    db = SessionLocal()
+    provider = FakeMessagingProvider()
+    biz = Business(phone_e164="+919000000003", name="Chai Point")
+    db.add(biz)
+    db.flush()
+    conv = Conversation(business_id=biz.id, state=ConversationState.ONBOARDING_CATEGORY)
+    db.add(conv)
+    db.commit()
+
+    # Invalid category input
+    r_bad_cat = handle_inbound_message(db, biz, conv, "99", None, provider)
+    assert conv.state == ConversationState.ONBOARDING_CATEGORY
+    assert r_bad_cat == copy.INVALID_CATEGORY_RETRY
+
+    # Valid category input
+    r_ok_cat = handle_inbound_message(db, biz, conv, "1", None, provider)
+    assert conv.state == ConversationState.ONBOARDING_LANGUAGE
+    assert biz.category == "Food stall"
+    assert r_ok_cat == copy.ASK_LANGUAGE
+
+    # Invalid language input
+    r_bad_lang = handle_inbound_message(db, biz, conv, "french", None, provider)
+    assert conv.state == ConversationState.ONBOARDING_LANGUAGE
+    assert r_bad_lang == copy.INVALID_LANGUAGE_RETRY
+
+    # Valid language input
+    r_ok_lang = handle_inbound_message(db, biz, conv, "2", None, provider)
+    assert conv.state == ConversationState.ONBOARDING_LANDMARK
+    assert biz.language == "hindi"
+    assert r_ok_lang == copy.ASK_LANDMARK
+    db.close()

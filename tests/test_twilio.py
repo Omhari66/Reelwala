@@ -128,7 +128,8 @@ def test_duplicate_message_ignored(client: TestClient) -> None:
 def test_inbound_video_media_message(client: TestClient) -> None:
     """Inbound message with video media attachment parsed correctly as video type."""
     test_auth_token = "test_auth_token_secret_123"
-    with patch.object(settings, "TWILIO_AUTH_TOKEN", test_auth_token):
+    with patch.object(settings, "TWILIO_AUTH_TOKEN", test_auth_token), \
+         patch("app.messaging.twilio_provider.TwilioProvider.send_text", return_value="SM_mock_sid"):
         url = "http://testserver/webhooks/twilio"
         payload = {
             "MessageSid": "MM_video_303",

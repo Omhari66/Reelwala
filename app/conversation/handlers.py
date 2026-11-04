@@ -25,12 +25,22 @@ CATEGORY_MAP = {
     "2": "Café/Restaurant",
     "3": "Bakery/Sweets",
     "4": "Other",
+    "food stall": "Food stall",
+    "cafe": "Café/Restaurant",
+    "café": "Café/Restaurant",
+    "restaurant": "Café/Restaurant",
+    "bakery": "Bakery/Sweets",
+    "sweets": "Bakery/Sweets",
+    "other": "Other",
 }
 
 LANGUAGE_MAP = {
     "1": "hinglish",
     "2": "hindi",
     "3": "english",
+    "hinglish": "hinglish",
+    "hindi": "hindi",
+    "english": "english",
 }
 
 BRAND_COLOR_MAP = {
@@ -45,6 +55,37 @@ BRAND_COLOR_MAP = {
     "green": "#43A047",
     "blue": "#1E88E5",
 }
+
+
+def _is_greeting(text: str) -> bool:
+    """Check if the text is simply an introductory greeting."""
+    clean = re.sub(r"[^\w\s]", "", text.strip().lower())
+    return clean in {
+        "hi", "hello", "hey", "namaste", "namaskar", "pranam",
+        "hlo", "helo", "start", "shuru", "karo", "hii", "hiii",
+    }
+
+
+def _is_address_like(text: str) -> bool:
+    """Detect if text looks like an address or landmark rather than a shop name."""
+    lower = text.strip().lower()
+    address_indicators = [
+        "near", "opposite", "ke paas", "ke pass", "ke samne", "ke samaney",
+        "behind", "in front of", "colony", "chowk", "road", "sector",
+        "market road", "gali no", "floor", "metro station", "bus stand",
+        "railway station", "cross road", "bypass",
+    ]
+    return any(ind in lower for ind in address_indicators)
+
+
+def _is_menu_like(text: str) -> bool:
+    """Detect if text looks like a menu listing with prices rather than a shop name."""
+    items = parse_typed_menu(text)
+    if len(items) >= 2:
+        return True
+    if len(items) == 1 and items[0][1] >= 10 and bool(re.search(r"(?:momo|chai|burger|pizza|roll|combo|thali|coffee|tea|sandwich|dosa|roti|dal|rice|paneer|chicken|\b\d+\s*(?:rs|inr|₹|/-))", text, re.IGNORECASE)):
+        return True
+    return bool(re.search(r"\b\d{1,4}\s*(?:rs|inr|₹|/-)\b", text, re.IGNORECASE))
 
 
 def parse_typed_menu(text: str) -> list[tuple[str, int]]:
@@ -150,7 +191,32 @@ def handle_inbound_message(
         return reply
 
     elif state == ConversationState.ONBOARDING_NAME:
-        business.name = clean_text or "My Food Outlet"
+        if media_url:
+            reply = copy.MEDIA_DURING_TEXT_STEP.format(step_name="dukaan / restaurant ka naam")
+            provider.send_text(business.phone_e164, reply)
+            return reply
+
+        if not clean_text or len(clean_text) < 2 or clean_text.isdigit():
+            reply = copy.INVALID_SHOP_NAME_GENERIC
+            provider.send_text(business.phone_e164, reply)
+            return reply
+
+        if _is_greeting(clean_text):
+            reply = copy.INVALID_SHOP_NAME_GREETING
+            provider.send_text(business.phone_e164, reply)
+            return reply
+
+        if _is_address_like(clean_text):
+            reply = copy.INVALID_SHOP_NAME_ADDRESS
+            provider.send_text(business.phone_e164, reply)
+            return reply
+
+        if _is_menu_like(clean_text):
+            reply = copy.INVALID_SHOP_NAME_MENU
+            provider.send_text(business.phone_e164, reply)
+            return reply
+
+        business.name = clean_text
         conversation.state = ConversationState.ONBOARDING_CATEGORY
         db.commit()
         reply = copy.ASK_CATEGORY
@@ -158,7 +224,20 @@ def handle_inbound_message(
         return reply
 
     elif state == ConversationState.ONBOARDING_CATEGORY:
-        category = CATEGORY_MAP.get(clean_text, clean_text) or "Food stall"
+        if media_url:
+            reply = copy.MEDIA_DURING_TEXT_STEP.format(step_name="business category (1-4)")
+            provider.send_text(business.phone_e164, reply)
+            return reply
+
+        category = CATEGORY_MAP.get(clean_text.lower())
+        if not category:
+            if len(clean_text) >= 3 and not _is_greeting(clean_text) and not clean_text.isdigit():
+                category = clean_text
+            else:
+                reply = copy.INVALID_CATEGORY_RETRY
+                provider.send_text(business.phone_e164, reply)
+                return reply
+
         business.category = category
         conversation.state = ConversationState.ONBOARDING_LANGUAGE
         db.commit()
@@ -167,7 +246,17 @@ def handle_inbound_message(
         return reply
 
     elif state == ConversationState.ONBOARDING_LANGUAGE:
-        lang = LANGUAGE_MAP.get(clean_text, "hinglish")
+        if media_url:
+            reply = copy.MEDIA_DURING_TEXT_STEP.format(step_name="Reel ki bhasha (1, 2 ya 3)")
+            provider.send_text(business.phone_e164, reply)
+            return reply
+
+        lang = LANGUAGE_MAP.get(clean_text.lower())
+        if not lang:
+            reply = copy.INVALID_LANGUAGE_RETRY
+            provider.send_text(business.phone_e164, reply)
+            return reply
+
         business.language = lang
         conversation.state = ConversationState.ONBOARDING_LANDMARK
         db.commit()
@@ -176,6 +265,16 @@ def handle_inbound_message(
         return reply
 
     elif state == ConversationState.ONBOARDING_LANDMARK:
+        if media_url:
+            reply = copy.MEDIA_DURING_TEXT_STEP.format(step_name="dukaan ka area ya landmark")
+            provider.send_text(business.phone_e164, reply)
+            return reply
+
+        if len(clean_text) < 3 or _is_greeting(clean_text):
+            reply = copy.INVALID_LANDMARK_RETRY
+            provider.send_text(business.phone_e164, reply)
+            return reply
+
         business.landmark = clean_text
         conversation.state = ConversationState.ONBOARDING_BRAND_COLOR
         db.commit()
@@ -184,7 +283,17 @@ def handle_inbound_message(
         return reply
 
     elif state == ConversationState.ONBOARDING_BRAND_COLOR:
-        color = BRAND_COLOR_MAP.get(clean_text.lower(), "#FF5722")
+        if media_url:
+            reply = copy.MEDIA_DURING_TEXT_STEP.format(step_name="Reel ka pasandida rang (1-5)")
+            provider.send_text(business.phone_e164, reply)
+            return reply
+
+        color = BRAND_COLOR_MAP.get(clean_text.lower())
+        if not color:
+            reply = copy.INVALID_BRAND_COLOR_RETRY
+            provider.send_text(business.phone_e164, reply)
+            return reply
+
         business.brand_hex = color
         conversation.state = ConversationState.MENU_SETUP
         db.commit()
@@ -195,6 +304,9 @@ def handle_inbound_message(
     elif state == ConversationState.MENU_SETUP:
         # Check if owner sent a photo of their menu
         if media_url:
+            # Send immediate sweet acknowledgement to owner
+            provider.send_text(business.phone_e164, copy.MENU_PHOTO_PROCESSING)
+
             tmp_image = f"data/menu_photos/menu_{business.id}_{uuid.uuid4().hex[:6]}.jpg"
             provider.download_media(media_url, tmp_image)
             extraction = extract_menu_from_image(tmp_image, llm_client=llm_client)
@@ -210,6 +322,10 @@ def handle_inbound_message(
                 if extraction.uncertain:
                     uncertain_note = f"\n(Uncertain: {', '.join(extraction.uncertain)})"
                 reply = copy.CONFIRM_MENU_ITEMS.format(items=summary) + uncertain_note
+                provider.send_text(business.phone_e164, reply)
+                return reply
+            else:
+                reply = copy.MENU_PHOTO_FAILED
                 provider.send_text(business.phone_e164, reply)
                 return reply
 
@@ -239,13 +355,14 @@ def handle_inbound_message(
             return reply
 
     elif state in (ConversationState.READY, ConversationState.PROCESSING):
+        from app.models.entities import Campaign, MediaAsset
+        from app.pipeline.orchestrator import process_campaign
+
         # Check if media clips were sent
         if media_url:
             from datetime import timedelta
 
             from app.models.base import utcnow
-            from app.models.entities import Campaign, MediaAsset
-            from app.pipeline.orchestrator import process_campaign
 
             # 1. Monthly limit check
             if is_monthly_limit_reached(db, business.id):
@@ -314,16 +431,35 @@ def handle_inbound_message(
             conversation.state = ConversationState.PROCESSING
             db.commit()
 
-            if is_first_media:
-                provider.send_text(business.phone_e164, copy.CLIPS_RECEIVED)
+            reply = copy.CLIP_RECEIVED_SWEET if is_first_media else copy.CLIPS_RECEIVED
+            provider.send_text(business.phone_e164, reply)
 
             # In direct execution or test mode, process if requested or multiple clips
             if auto_process:
                 process_campaign(db, campaign.id, provider, llm_client=llm_client)
 
-            return copy.CLIPS_RECEIVED
+            return reply
 
         # Text received without media
+        # Check if owner typed 'done' / 'shuru' to render existing gathered clips
+        if is_confirmation(clean_text) or clean_text.lower() in ("done", "banado", "shuru", "make", "ok", "ready"):
+            active_campaign = (
+                db.query(Campaign)
+                .filter(
+                    Campaign.business_id == business.id,
+                    Campaign.state.in_(["gathering", "CREATED"]),
+                )
+                .order_by(Campaign.created_at.desc())
+                .first()
+            )
+            if active_campaign:
+                assets_count = db.query(MediaAsset).filter(MediaAsset.campaign_id == active_campaign.id).count()
+                if assets_count > 0:
+                    provider.send_text(business.phone_e164, copy.REEL_GENERATING_SWEET)
+                    if auto_process:
+                        process_campaign(db, active_campaign.id, provider, llm_client=llm_client)
+                    return copy.REEL_GENERATING_SWEET
+
         reply = copy.READY_NO_CLIPS
         provider.send_text(business.phone_e164, reply)
         return reply
