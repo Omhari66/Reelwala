@@ -55,7 +55,8 @@ def test_signature_failure_returns_403(client: TestClient) -> None:
 def test_valid_signature_processes_and_saves_inbound_message(client: TestClient) -> None:
     """Valid signature processes inbound text message and saves to database."""
     test_auth_token = "test_auth_token_secret_123"
-    with patch.object(settings, "TWILIO_AUTH_TOKEN", test_auth_token):
+    with patch.object(settings, "TWILIO_AUTH_TOKEN", test_auth_token), \
+         patch("app.messaging.twilio_provider.TwilioProvider.send_text", return_value="SM_mock_sid"):
         url = "http://testserver/webhooks/twilio"
         payload = {
             "MessageSid": "SM_valid_101",
@@ -92,7 +93,8 @@ def test_valid_signature_processes_and_saves_inbound_message(client: TestClient)
 def test_duplicate_message_ignored(client: TestClient) -> None:
     """Duplicate provider_msg_id should return 200 OK with duplicate notice and not re-create."""
     test_auth_token = "test_auth_token_secret_123"
-    with patch.object(settings, "TWILIO_AUTH_TOKEN", test_auth_token):
+    with patch.object(settings, "TWILIO_AUTH_TOKEN", test_auth_token), \
+         patch("app.messaging.twilio_provider.TwilioProvider.send_text", return_value="SM_mock_sid"):
         url = "http://testserver/webhooks/twilio"
         payload = {
             "MessageSid": "SM_dupe_202",
@@ -156,7 +158,8 @@ def test_inbound_video_media_message(client: TestClient) -> None:
 def test_webhook_onboarding_conversation_integration(client: TestClient) -> None:
     """Simulate user interacting with the webhook through multiple messages."""
     test_auth_token = "test_auth_token_secret_123"
-    with patch.object(settings, "TWILIO_AUTH_TOKEN", test_auth_token):
+    with patch.object(settings, "TWILIO_AUTH_TOKEN", test_auth_token), \
+         patch("app.messaging.twilio_provider.TwilioProvider.send_text", return_value="SM_mock_sid"):
         url = "http://testserver/webhooks/twilio"
         # 1. First message
         p1 = {"MessageSid": "SM_step_1", "From": "whatsapp:+919111222333", "Body": "Hi", "NumMedia": "0"}
