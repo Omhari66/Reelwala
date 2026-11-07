@@ -1,15 +1,19 @@
 """Pipeline step: Download and normalize incoming media assets into video clips."""
 
+import shutil
 from pathlib import Path
 
-from app.pipeline.ffmpeg_utils import run_ffmpeg
+from app.pipeline.ffmpeg_utils import probe_media_kind, run_ffmpeg
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
 
 def is_image_file(path: str | Path) -> bool:
-    """Return True if path has an image file extension."""
-    return Path(path).suffix.lower() in IMAGE_EXTENSIONS
+    """Return True if path is genuinely an image (not a video misnamed as image)."""
+    p = Path(path)
+    if p.suffix.lower() not in IMAGE_EXTENSIONS:
+        return False
+    return probe_media_kind(p) == "image"
 
 
 def convert_image_to_still_clip(
@@ -56,8 +60,17 @@ def normalize_media_clip(media_path: str | Path, output_dir: str | Path) -> Path
     if not src.is_file():
         raise FileNotFoundError(f"Source media not found: {src}")
 
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     if is_image_file(src):
-        dest = Path(output_dir) / f"{src.stem}_clip.mp4"
+        dest = out_dir / f"{src.stem}_clip.mp4"
         return convert_image_to_still_clip(src, dest, duration_s=3.0)
+
+    # If it is a video with an image/wrong extension (e.g. .jpg), standardize to .mp4
+    if src.suffix.lower() not in {".mp4", ".mov", ".mkv", ".avi", ".webm"}:
+        dest = out_dir / f"{src.stem}_clip.mp4"
+        shutil.copy2(src, dest)
+        return dest
 
     return src

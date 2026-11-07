@@ -139,6 +139,7 @@ def handle_inbound_message(
     provider: MessagingProvider,
     llm_client: LLMClient | None = None,
     auto_process: bool = False,
+    media_content_type: str | None = None,
 ) -> str:
     """Process an inbound WhatsApp message according to the conversation state machine."""
     clean_text = (text or "").strip()
@@ -399,11 +400,17 @@ def handle_inbound_message(
                 db.add(campaign)
                 db.flush()
 
-            # Record media asset
-            kind = "video" if "video" in str(media_url).lower() or ".mp4" in str(media_url).lower() else "image"
-            ext = ".mp4" if kind == "video" else ".jpg"
-            dest_path = f"data/campaigns/{campaign.id}/uploads/{uuid.uuid4().hex[:8]}{ext}"
-            provider.download_media(media_url, dest_path)
+            # Record media asset with accurate probing
+            from app.pipeline.ffmpeg_utils import probe_media_kind
+
+            hint_ext = ".mp4" if (media_content_type and "video" in media_content_type.lower()) else ".bin"
+            temp_path = f"data/campaigns/{campaign.id}/uploads/{uuid.uuid4().hex[:8]}{hint_ext}"
+            provider.download_media(media_url, temp_path)
+
+            kind = probe_media_kind(temp_path)
+            real_ext = ".mp4" if kind == "video" else ".jpg"
+            dest_path = f"data/campaigns/{campaign.id}/uploads/{uuid.uuid4().hex[:8]}{real_ext}"
+            Path(temp_path).rename(dest_path)
 
             # 3. Media limits check: size <= 50MB, duration <= 60s
             is_valid, err_code = inspect_media_file(dest_path, is_video=(kind == "video"))

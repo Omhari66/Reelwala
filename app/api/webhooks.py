@@ -142,6 +142,7 @@ async def twilio_webhook(
             media_url=media_url,
             provider=provider,
             auto_process=True,
+            media_content_type=content_type if num_media > 0 else None,
         )
     elif msg_type == "audio":
         import uuid
