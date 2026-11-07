@@ -25,14 +25,14 @@ def ensure_background_music_track(temp_dir: Path) -> Path:
             if tracks:
                 return tracks[0]
 
-    # Generate a soft synthetic ambient audio track
+    # Generate a soft warm ambient audio texture (pink noise lowpassed, warm lofi texture)
     synth_music = temp_dir / "ambient_music.mp3"
     run_ffmpeg(
         [
             "-y",
             "-f", "lavfi",
-            "-i", "sine=frequency=330:duration=30:sample_rate=44100",
-            "-af", "volume=0.15",
+            "-i", "anoisesrc=d=30:c=pink:r=44100,lowpass=f=350",
+            "-af", "volume=0.10",
             "-c:a", "libmp3lame",
             "-b:a", "128k",
             str(synth_music),
@@ -154,6 +154,7 @@ def render_video(
             [
                 "-y",
                 "-i", str(raw_concat),
+                "-stream_loop", "-1",
                 "-i", str(music_track),
                 "-filter_complex", f"[0:v]{vf_filters}[vout];{audio_filter}",
                 "-map", "[vout]",
